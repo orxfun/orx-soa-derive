@@ -39,8 +39,8 @@ fn is_non_send_type(ty: &Type) -> bool {
 /// # Panics
 ///
 /// - panics when not used on a named struct
-#[proc_macro_derive(NamedSoa)]
-pub fn derive_named_soa(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Soa)]
+pub fn derive_soa(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as DeriveInput);
 
     let name = &input.ident;
@@ -48,10 +48,10 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
         Data::Struct(data) => match &data.fields {
             Fields::Named(fields) => &fields.named,
             #[allow(clippy::panic)]
-            _ => panic!("NamedSoa only supports structs with named fields"),
+            _ => panic!("Soa only supports structs with named fields"),
         },
         #[allow(clippy::panic)]
-        _ => panic!("NamedSoa only supports structs"),
+        _ => panic!("Soa only supports structs"),
     };
 
     let field_idents: Vec<_> = fields
