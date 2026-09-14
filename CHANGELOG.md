@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0](https://github.com/orxfun/orx-soa-derive/compare/v1.0.0...v1.1.0) - 2026-09-14
+
+### Added
+
+- impl clone and copy for pointers regardless of types ([#7](https://github.com/orxfun/orx-soa-derive/pull/7))
+
 ## [1.0.0](https://github.com/orxfun/orx-soa-derive/releases/tag/v1.0.0) - 2026-09-14
 
 ### Added
