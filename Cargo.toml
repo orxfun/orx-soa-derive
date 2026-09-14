@@ -6,7 +6,7 @@ authors = ["orxfun <orx.ugur.arikan@gmail.com>"]
 description = "Proc macros for deriving soa collections"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/orxfun/orx-soa-derive/"
-keywords = ["vec", "array", "vector", "soa", "struct of array"]
+keywords = ["vec", "array", "vector", "soa"]
 categories = ["data-structures", "algorithms", "no-std"]
 
 [lib]
