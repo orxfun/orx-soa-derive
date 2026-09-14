@@ -1,3 +1,21 @@
+#![doc = include_str!("../README.md")]
+#![warn(
+    missing_docs,
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::float_cmp,
+    clippy::float_cmp_const,
+    clippy::missing_panics_doc,
+    clippy::todo
+)]
+#![no_std]
+
+extern crate alloc;
+
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Type};
@@ -16,22 +34,29 @@ fn is_non_send_type(ty: &Type) -> bool {
     }
 }
 
-#[proc_macro_derive(DeriveSoa)]
-pub fn derive_soa(input: TokenStream) -> TokenStream {
+/// Derives struct-of-arrays collection of the provided type.
+///
+/// # Panics
+///
+/// - panics when not used on a named struct
+#[proc_macro_derive(NamedSoa)]
+pub fn derive_named_soa(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as DeriveInput);
 
     let name = &input.ident;
     let fields = match &input.data {
         Data::Struct(data) => match &data.fields {
             Fields::Named(fields) => &fields.named,
-            _ => panic!("DeriveSoa only supports structs with named fields"),
+            #[allow(clippy::panic)]
+            _ => panic!("NamedSoa only supports structs with named fields"),
         },
-        _ => panic!("DeriveSoa only supports structs"),
+        #[allow(clippy::panic)]
+        _ => panic!("NamedSoa only supports structs"),
     };
 
     let field_idents: Vec<_> = fields
         .iter()
-        .map(|f| f.ident.as_ref().unwrap().clone())
+        .map(|f| f.ident.as_ref().expect("named-struct").clone())
         .collect();
     let field_types: Vec<_> = fields.iter().map(|f| f.ty.clone()).collect();
     let vec_field_types: Vec<syn::Type> = field_types
