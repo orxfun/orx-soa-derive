@@ -39,8 +39,8 @@ fn is_non_send_type(ty: &Type) -> bool {
 /// # Panics
 ///
 /// - panics when not used on a named struct
-#[proc_macro_derive(NamedSoa)]
-pub fn derive_named_soa(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Soa)]
+pub fn derive_soa(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as DeriveInput);
 
     let name = &input.ident;
@@ -48,10 +48,10 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
         Data::Struct(data) => match &data.fields {
             Fields::Named(fields) => &fields.named,
             #[allow(clippy::panic)]
-            _ => panic!("NamedSoa only supports structs with named fields"),
+            _ => panic!("Soa only supports structs with named fields"),
         },
         #[allow(clippy::panic)]
-        _ => panic!("NamedSoa only supports structs"),
+        _ => panic!("Soa only supports structs"),
     };
 
     let field_idents: Vec<_> = fields
@@ -65,7 +65,7 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
         .collect();
     let include_par_extend = !field_types.iter().any(is_non_send_type);
 
-    let vec_name = format_ident!("{}Vec", name);
+    let soa_name = format_ident!("{}Soa", name);
     let ptr_name = format_ident!("{}Ptr", name);
     let mut_ptr_name = format_ident!("{}MutPtr", name);
     let iter_name = format_ident!("{}Iter", name);
@@ -130,6 +130,37 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
         .iter()
         .map(|field| quote! { #field: self.#field.as_ptr(), })
         .collect();
+
+    let first = &field_idents[0];
+    let rest = field_idents.iter().skip(1).collect::<Vec<_>>();
+    let get = if field_idents.len() == 1 {
+        quote! {
+            self.#first.get(index).map(|#first| #ref_name { #first })
+        }
+    } else {
+        quote! {
+            self.#first.get(index).map(|#first| {
+                #(
+                    let #rest = &self.#rest[index];
+                )*
+                #ref_name { #(#field_idents),* }
+            })
+        }
+    };
+    let get_mut = if field_idents.len() == 1 {
+        quote! {
+            self.#first.get_mut(index).map(|#first| #mut_name { #first })
+        }
+    } else {
+        quote! {
+            self.#first.get_mut(index).map(|#first| {
+                #(
+                    let #rest = &mut self.#rest[index];
+                )*
+                #mut_name { #(#field_idents),* }
+            })
+        }
+    };
 
     let as_mut_ptr_assignments: Vec<_> = field_idents
         .iter()
@@ -372,7 +403,7 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
     let par_extend_impl = if include_par_extend {
         quote! {
             use ::orx_priority_queue::PriorityQueue as _;
-            impl ::orx_parallel::collectables::ParExtendCore<#name> for #vec_name {
+            impl ::orx_parallel::collectables::ParExtendCore<#name> for #soa_name {
                 type ThreadValues = Self;
                 type OrderedThreadValues = ::orx_parallel::collectables::ColAndPos<Self>;
                 fn new_thread_values() -> Self::ThreadValues { Default::default() }
@@ -417,11 +448,11 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
             }
         }
 
-        pub struct #vec_name {
+        pub struct #soa_name {
             #(#vec_field_defs)*
         }
 
-        impl #vec_name {
+        impl #soa_name {
             pub fn new() -> Self {
                 Self {
                     #(#vec_new_inits)*
@@ -455,6 +486,14 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
                 }
             }
 
+            pub fn get(&self, index:usize) -> Option<#ref_name> {
+                #get
+            }
+
+            pub fn get_mut(&mut self, index:usize) -> Option<#mut_name> {
+                #get_mut
+            }
+
             pub fn push(&mut self, item: #name) {
                 #(#push_fields)*
             }
@@ -474,19 +513,19 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl Default for #vec_name {
+        impl Default for #soa_name {
             fn default() -> Self {
                 Self::new()
             }
         }
 
-        impl From<#vec_name> for (#(#vec_field_types, )*) {
-            fn from(value: #vec_name) -> Self {
+        impl From<#soa_name> for (#(#vec_field_types, )*) {
+            fn from(value: #soa_name) -> Self {
                 (#(value.#field_idents, )*)
             }
         }
 
-        impl Extend<#name> for #vec_name {
+        impl Extend<#name> for #soa_name {
             fn extend<I: IntoIterator<Item = #name>>(&mut self, iter: I) {
                 for x in iter {
                     #(#extend_fields)*
@@ -506,7 +545,7 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl IntoIterator for #vec_name {
+        impl IntoIterator for #soa_name {
             type Item = #name;
             type IntoIter = #iter_name;
 
@@ -517,6 +556,7 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
             }
         }
 
+        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
         pub struct #ref_name<'a> {
             #(#ref_fields)*
         }
@@ -533,7 +573,7 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl<'a> IntoIterator for &'a #vec_name {
+        impl<'a> IntoIterator for &'a #soa_name {
             type Item = #ref_name<'a>;
             type IntoIter = #iter_ref_name<'a>;
 
@@ -544,6 +584,7 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
             }
         }
 
+        #[derive(PartialEq, Eq, Debug)]
         pub struct #mut_name<'a> {
             #(#mut_ref_fields)*
         }
@@ -560,7 +601,7 @@ pub fn derive_named_soa(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl<'a> IntoIterator for &'a mut #vec_name {
+        impl<'a> IntoIterator for &'a mut #soa_name {
             type Item = #mut_name<'a>;
             type IntoIter = #iter_mut_name<'a>;
 
