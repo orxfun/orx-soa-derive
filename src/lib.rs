@@ -471,6 +471,7 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
             }
         }
 
+        #[derive(Clone, Debug, PartialEq, Eq)]
         pub struct #soa_name {
             #(#vec_field_defs)*
         }
