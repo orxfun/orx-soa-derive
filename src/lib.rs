@@ -97,6 +97,11 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
         .map(|field| quote! { #field: unsafe { self.#field.add(count) }, })
         .collect();
 
+    let ptr_clone_copy_fields: Vec<_> = field_idents
+        .iter()
+        .map(|field| quote! { #field: self.#field, })
+        .collect();
+
     let ptr_copy_fields: Vec<_> = field_idents
         .iter()
         .map(|field| quote! { unsafe { self.#field.copy_from_nonoverlapping(src.#field, count) }; })
@@ -418,10 +423,19 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        #[derive(Clone, Copy)]
         pub struct #ptr_name {
             #(#ptr_fields)*
         }
+
+        impl Clone for #ptr_name {
+            fn clone(&self) -> Self {
+                Self {
+                    #(#ptr_clone_copy_fields)*
+                }
+            }
+        }
+
+        impl Copy for #ptr_name {}
 
         impl #ptr_name {
             pub unsafe fn add(self, count: usize) -> Self {
@@ -431,10 +445,19 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
             }
         }
 
-        #[derive(Clone, Copy)]
         pub struct #mut_ptr_name {
             #(#mut_ptr_fields)*
         }
+
+        impl Clone for #mut_ptr_name {
+            fn clone(&self) -> Self {
+                Self {
+                    #(#ptr_clone_copy_fields)*
+                }
+            }
+        }
+
+        impl Copy for #mut_ptr_name {}
 
         impl #mut_ptr_name {
             pub unsafe fn add(self, count: usize) -> Self {
