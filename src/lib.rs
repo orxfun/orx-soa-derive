@@ -329,14 +329,14 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
     let ordered_thread_values = quote! {
         fn add_ordered_thread_value(collected: &mut Self::OrderedThreadValues, idx: usize, value: #name) {
             collected.values.push(value);
-            collected.positions.push(::orx_parallel::collectables::IdxLen { idx, len: 1 });
+            collected.positions.push(::orx_parallel::extendable::IdxLen { idx, len: 1 });
         }
         fn add_ordered_thread_values(collected: &mut Self::OrderedThreadValues, idx: usize, values: impl IntoIterator<Item = #name>) {
             let len_begin = collected.values.len();
             collected.values.extend(values);
             let len = collected.values.len() - len_begin;
             if len > 0 {
-                collected.positions.push(::orx_parallel::collectables::IdxLen { idx, len });
+                collected.positions.push(::orx_parallel::extendable::IdxLen { idx, len });
             }
         }
         fn add_ordered_thread_optionals(collected: &mut Self::OrderedThreadValues, idx: usize, values: impl IntoIterator<Item = Option<#name>>) -> Option<()> {
@@ -346,7 +346,7 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
             }
             let len = collected.values.len() - len_begin;
             if len > 0 {
-                collected.positions.push(::orx_parallel::collectables::IdxLen { idx, len });
+                collected.positions.push(::orx_parallel::extendable::IdxLen { idx, len });
             }
             Some(())
         }
@@ -357,7 +357,7 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
             }
             let len = collected.values.len() - len_begin;
             if len > 0 {
-                collected.positions.push(::orx_parallel::collectables::IdxLen { idx, len });
+                collected.positions.push(::orx_parallel::extendable::IdxLen { idx, len });
             }
             Ok(())
         }
@@ -378,20 +378,20 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
             let mut pos_indices = ::std::vec![0; results.len()];
             for (t, vec) in results.iter().enumerate() {
                 if let Some(pos) = vec.positions.first() {
-                    let node = ::orx_parallel::collectables::ThBegLen::new(t, 0, pos.len);
+                    let node = ::orx_parallel::extendable::ThBegLen::new(t, 0, pos.len);
                     queue.push(node, pos.idx);
                 }
             }
             let mut curr_t = queue.pop_node();
             let mut ptr_dst = unsafe { self.as_mut_ptr().add(initial_len) };
-            while let Some(::orx_parallel::collectables::ThBegLen { th, beg, len }) = curr_t {
+            while let Some(::orx_parallel::extendable::ThBegLen { th, beg, len }) = curr_t {
                 let ptr_src = unsafe { results[th].values.as_ptr().add(beg) };
                 unsafe { ptr_dst.copy_from_nonoverlapping(ptr_src, len) };
                 pos_indices[th] += 1;
                 curr_t = match results[th].positions.get(pos_indices[th]) {
                     Some(pos) => {
                         let beg = beg + len;
-                        let node = ::orx_parallel::collectables::ThBegLen::new(th, beg, pos.len);
+                        let node = ::orx_parallel::extendable::ThBegLen::new(th, beg, pos.len);
                         Some(queue.push_then_pop(node, pos.idx).0)
                     }
                     None => queue.pop_node(),
@@ -408,9 +408,9 @@ pub fn derive_soa(input: TokenStream) -> TokenStream {
     let par_extend_impl = if include_par_extend {
         quote! {
             use ::orx_priority_queue::PriorityQueue as _;
-            impl ::orx_parallel::collectables::ParExtendCore<#name> for #soa_name {
+            impl ::orx_parallel::extendable::ParExtendCore<#name> for #soa_name {
                 type ThreadValues = Self;
-                type OrderedThreadValues = ::orx_parallel::collectables::ColAndPos<Self>;
+                type OrderedThreadValues = ::orx_parallel::extendable::ColAndPos<Self>;
                 fn new_thread_values() -> Self::ThreadValues { Default::default() }
                 fn new_ordered_thread_values() -> Self::OrderedThreadValues { Default::default() }
                 fn add_thread_value(collected: &mut Self::ThreadValues, value: #name) { collected.push(value); }
