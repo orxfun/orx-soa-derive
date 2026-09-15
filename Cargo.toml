@@ -1,6 +1,6 @@
 [package]
 name = "orx-soa-derive"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2024"
 authors = ["orxfun <orx.ugur.arikan@gmail.com>"]
 description = "Proc macros for deriving soa collections"
