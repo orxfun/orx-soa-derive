@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0](https://github.com/orxfun/orx-soa-derive/compare/v1.1.0...v1.2.0) - 2026-09-14
+
+### Added
+
+- derive common traits on soa ([#10](https://github.com/orxfun/orx-soa-derive/pull/10))
+
+### Other
+
+- add contributing and license sections to readme ([#9](https://github.com/orxfun/orx-soa-derive/pull/9))
+
 ## [1.1.0](https://github.com/orxfun/orx-soa-derive/compare/v1.0.0...v1.1.0) - 2026-09-14
 
 ### Added
